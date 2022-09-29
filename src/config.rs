@@ -2,10 +2,13 @@ use std::env;
 use std::path::PathBuf;
 
 pub fn get_mega_credentials() -> (String, String) {
-    let user = env::var("MEGA_USER").expect("MEGA_USER not present");
-    let password = env::var("MEGA_PWD").expect("MEGA_PWD not present");
+    let credentials = env::var("MEGA_CREDENTIALS")
+        .expect("MEGA_CREDENTIALS not present");
 
-    (user, password)
+    let (user, password) = credentials
+        .split_once(' ').expect("Expected format is: '<user> <password>'");
+
+    (String::from(user), String::from(password))
 }
 
 pub fn is_windows() -> bool {
