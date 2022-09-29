@@ -2,7 +2,16 @@
 name = "anisync"
 version = "0.1.0"
 edition = "2021"
+license-file = "LICENSE"
+description = "Sync media with different storages"
+homepage = "https://github.com/anigelo/anisync"
+documentation = "https://docs.rs/anisync"
+repository = "https://github.com/anigelo/anisync"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+dotenv = "0.15"
+tokio = { version = "1", features = ["full"] }
+warp = "0.3"
