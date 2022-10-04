@@ -14,6 +14,7 @@ RUN cargo build --release
 FROM debian:bookworm-slim
 ARG APP=/usr/src/app
 VOLUME /media
+VOLUME /data
 EXPOSE 8025
 # Install megacmd
 RUN apt-get update \

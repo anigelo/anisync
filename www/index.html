@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en-uk">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Anisync</title>
+        <style>
+            html {
+                background-color: #1a1a1a;
+                color: #f9f9f9;
+            }
+            #app {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            label {
+                margin-right: 1rem;
+            }
+            .form-field {
+                margin-bottom: 1.5rem;
+            }
+            section {
+                margin: 2rem;
+            }
+        </style>
+    </head>
+    <body>
+        <script type="importmap">
+          {
+            "imports": {
+              "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+            }
+          }
+        </script>
+        <div id="app">
+            <section>
+                <h1>Config</h1>
+                <div class="form-field"><label for="MEGA_USER">MEGA_USER</label><input id="MEGA_USER" v-model="config.MEGA_USER"></div>
+                <div class="form-field"><label for="MEGA_PWD">MEGA_PWD</label><input id="MEGA_PWD" v-model="config.MEGA_PWD"></div>
+                <div class="form-field"><label for="DOWNLOAD_FOLDER">DOWNLOAD_FOLDER</label><input id="DOWNLOAD_FOLDER" v-model="config.DOWNLOAD_FOLDER"></div>
+                <div class="form-field"><label for="LOCAL_MEDIA_ROOT">LOCAL_MEDIA_ROOT</label><input id="LOCAL_MEDIA_ROOT" v-model="config.LOCAL_MEDIA_ROOT"></div>
+                <div class="form-field"><label for="REMOTE_MEDIA_ROOT">REMOTE_MEDIA_ROOT</label><input id="REMOTE_MEDIA_ROOT" v-model="config.REMOTE_MEDIA_ROOT"></div>
+                <div class="form-field"><button @click="submit_config">Save</button></div>
+            </section>
+            <section>
+                <h1>Sync Folders</h1>
+                <button @click="new_sync" v-if="syncs.length == 0" style="margin-left: 1rem;">+</button>
+                <div class="form-field" v-for="sync in syncs">
+                    <label>Remote</label><input v-model="sync.remote">
+                    <label style="margin-left: 1rem;">Local</label><input v-model="sync.local">
+                    <button style="margin-left: 1rem;" @click="new_sync">+</button>
+                </div>
+                <div class="form-field" v-show="syncs.length > 0"><button @click="submit_syncs">Save</button></div>
+            </section>
+            <section>
+                <h1>Filters</h1>
+                <button @click="add_contains" v-if="filters.contains.length == 0" style="margin-left: 1rem; margin-bottom: 1rem;">+</button>
+                <div class="form-field" v-for="(_, index) in filters.contains">
+                    <label>Contains</label><input v-model="filters.contains[index]">
+                    <button style="margin-left: 1rem;" @click="add_contains">+</button>
+                </div>
+                <button @click="add_not_contains" v-if="filters.not_contains.length == 0" style="margin-left: 1rem; margin-bottom: 1rem;">+</button>
+                <div class="form-field" v-for="(_, index) in filters.not_contains">
+                    <label>Not Contains</label><input v-model="filters.not_contains[index]">
+                    <button style="margin-left: 1rem;" @click="add_not_contains">+</button>
+                </div>
+                <div class="form-field" v-show="filters.contains.length > 0 || filters.not_contains.length"><button @click="submit_filters">Save</button></div>
+            </section>
+        </div>
+
+        <script type="module">
+            import { createApp } from 'vue';
+
+            createApp({
+                data() {
+                    return {
+                        config: {},
+                        syncs: [],
+                        filters: {contains:[], not_contains:[]}
+                    }
+                },
+                methods: {
+                    fetch_config() {
+                        fetch("/api/config")
+                            .then(response => response.json())
+                            .then(data => (this.config = data))
+                    },
+                    submit_config() {
+                        const requestOptions = {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(this.config)
+                        };
+                        fetch("/api/config", requestOptions)
+                            .then(response => console.log(response));
+                    },
+                    new_sync() {
+                        this.syncs.push({remote: '',local: ''});
+                    },
+                    fetch_syncs() {
+                        fetch("/api/syncs")
+                            .then(response => response.json())
+                            .then(data => (this.syncs = data))
+                    },
+                    submit_syncs() {
+                        const requestOptions = {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(this.syncs)
+                        };
+                        fetch("/api/syncs", requestOptions)
+                            .then(response => console.log(response));
+                    },
+                    fetch_filters() {
+                        fetch("/api/filters")
+                            .then(response => response.json())
+                            .then(data => (this.filters = data))
+                    },
+                    submit_filters() {
+                        const requestOptions = {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(this.filters)
+                        };
+                        fetch("/api/filters", requestOptions)
+                            .then(response => console.log(response));
+                    },
+                    add_contains() {
+                        this.filters.contains.push('');
+                    },
+                    add_not_contains() {
+                        this.filters.not_contains.push('');
+                    }
+                },
+                created() {
+                    this.fetch_config();
+                    this.fetch_syncs();
+                    this.fetch_filters();
+                }
+            }).mount('#app')
+        </script>
+    </body>
+</html>
+
+

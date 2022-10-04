@@ -1,10 +1,11 @@
 mod config;
 mod sync;
+mod fs_store;
+mod api;
 
 extern crate dotenv;
 
 use std::time::Duration;
-use warp::Filter;
 
 #[tokio::main]
 async fn main() {
@@ -12,13 +13,7 @@ async fn main() {
 
     tokio::spawn(auto_sync());
 
-    let sync = warp::path!("sync")
-        .map(|| {
-            sync::run_sync();
-            warp::http::StatusCode::OK
-        });
-
-    warp::serve(sync)
+    warp::serve(api::routes())
         .run(([0, 0, 0, 0], 8025))
         .await;
 }
