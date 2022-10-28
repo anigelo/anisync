@@ -1,14 +1,31 @@
-use warp::Filter;
+use warp::{Filter};
 
 pub fn routes() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    let index = warp::get()
-        .and(warp::path::end())
-        .and(warp::fs::file("./www/index.html"));
+    let index = serve_index();
 
     index
         .or(config())
         .or(syncs())
         .or(filters())
+}
+
+#[cfg(not(debug_assertions))]
+fn serve_index() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let index = warp::get()
+        .and(warp::path::end())
+        .and(warp::fs::dir("./www"));
+    index
+        .or(warp::path("assets")
+            .and(warp::get())
+            .and(warp::fs::dir("./www/assets")))
+}
+
+#[cfg(debug_assertions)]
+fn serve_index() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path::end()
+        .map(|| {
+            warp::redirect(warp::http::Uri::from_static("http://127.0.0.1:5173/"))
+        })
 }
 
 fn config() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {

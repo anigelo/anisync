@@ -8,6 +8,11 @@ homepage = "https://github.com/anigelo/anisync"
 documentation = "https://docs.rs/anisync"
 repository = "https://github.com/anigelo/anisync"
 readme = "README.md"
+build = "build.rs"
+
+[[bin]]
+name = "anisync"
+path = "src/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

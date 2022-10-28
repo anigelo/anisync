@@ -4,8 +4,7 @@ use std::process::{Command, ExitStatus};
 use crate::config;
 use crate::config::Config;
 
-pub fn run_sync() {
-    let settings = Config::read();
+pub fn run_sync(settings: Config) {
     if let (Some(mega_pwd), Some(mega_user), Some(remote_root)) = (settings.mega_pwd, settings.mega_user, settings.remote_media_root) {
         let exit_status = try_login(mega_user, mega_pwd);
         println!();
@@ -38,8 +37,17 @@ fn sync_folder(download_folder: &PathBuf, local: PathBuf, remote: String) {
     let next_local_episode = next_local_episode(&local);
     println!("Next episode: {}", next_local_episode);
 
-    let match_episode = remote_episodes.into_iter()
-        .find(|episode| episode.contains(&format!(" {:0>2}.", next_local_episode)) && apply_filters(episode));
+    let possible_matches: Vec<String> = remote_episodes.into_iter()
+        .filter(|episode| episode.contains(&format!(" {:0>2}.", next_local_episode)))
+        .collect();
+    let perfect_match = possible_matches.iter().find(|episode| apply_filters(episode));
+
+    let match_episode = if perfect_match.is_some() {
+        perfect_match
+    } else {
+        println!("Trying closest match...");
+        possible_matches.first()
+    };
 
     if let Some(media) = match_episode {
         println!("Match: {}", media);
@@ -93,11 +101,17 @@ fn list_remote_folder(remote_folder: &str) -> Vec<String> {
         .output();
 
     match output {
-        Ok(output) => {
+        Ok(output) if output.status.success() => {
             let ls = String::from_utf8_lossy(&output.stdout);
             ls.lines()
                 .map(|line| line.to_string())
                 .collect()
+        },
+        Ok(output_error) => {
+            let error = String::from_utf8_lossy(&output_error.stdout);
+            eprintln!("Error on 'mega-ls' for path '{}'", remote_folder);
+            println!("{}", error);
+            vec![]
         },
         Err(e) => {
             eprintln!("Error on 'mega-ls' for path '{}', Error: {:#?}", remote_folder, e);

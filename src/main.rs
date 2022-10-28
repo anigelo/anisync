@@ -20,11 +20,13 @@ async fn main() {
 
 async fn auto_sync() {
     loop {
-        let join_handle = tokio::task::spawn_blocking(|| sync::run_sync());
+        let settings = config::Config::read();
+        let scan_interval = Duration::from_secs(settings.scan_interval.into());
+        let join_handle = tokio::task::spawn_blocking(|| sync::run_sync(settings));
         if let Err(e) = join_handle.await {
             eprintln!("{:?}", e);
         }
-        tokio::time::sleep(Duration::from_secs(86400)).await;
+        tokio::time::sleep(scan_interval).await;
     }
 }
 

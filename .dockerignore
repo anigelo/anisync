@@ -1,7 +1,9 @@
 .git
 target
 .idea
-
+.fleet
+www/dist
+www/node_modules
 .env
 docker-compose.yml
 

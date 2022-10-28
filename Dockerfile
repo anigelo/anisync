@@ -1,13 +1,9 @@
-FROM rust:1.64 as builder
-# Cache deps
-RUN USER=root cargo new --bin anisync
-WORKDIR ./anisync
+FROM rust:1.64.0-alpine3.16 as builder
+WORKDIR /build
 COPY ./Cargo.toml ./Cargo.toml
-RUN cargo build --release
-RUN rm src/*.rs
-# Build code
-ADD . ./
-RUN rm ./target/release/deps/anisync*
+RUN cargo fetch
+COPY . .
+RUN apk add --no-cache build-base nodejs npm
 RUN cargo build --release
 
 
@@ -25,6 +21,7 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/megacmd.*
 # Copy binaries from builder image
-COPY --from=builder /anisync/target/release/anisync ${APP}/anisync
+COPY --from=builder /build/target/release/anisync ${APP}/anisync
+COPY --from=builder /build/www/dist ${APP}/www
 WORKDIR ${APP}
 CMD ["./anisync"]

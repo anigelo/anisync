@@ -16,7 +16,13 @@ pub struct Config {
     #[serde(rename = "LOCAL_MEDIA_ROOT", default = "default_media")]
     pub local_media_root: PathBuf,
     #[serde(rename = "REMOTE_MEDIA_ROOT")]
-    pub remote_media_root: Option<String>
+    pub remote_media_root: Option<String>,
+    #[serde(rename = "SCAN_INTERVAL", default = "default_interval")]
+    pub scan_interval: u32
+}
+
+fn default_interval() -> u32 {
+    86400
 }
 
 fn default_media() -> PathBuf {
