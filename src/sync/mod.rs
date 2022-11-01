@@ -4,6 +4,8 @@ use std::process::{Command, ExitStatus};
 use crate::config;
 use crate::config::Config;
 
+mod filtering;
+
 pub fn run_sync(settings: Config) {
     if let (Some(mega_pwd), Some(mega_user), Some(remote_root)) = (settings.mega_pwd, settings.mega_user, settings.remote_media_root) {
         let exit_status = try_login(mega_user, mega_pwd);
@@ -13,9 +15,9 @@ pub fn run_sync(settings: Config) {
             Ok(status) if is_logged_in(status) => {
                 for sync_dir in config::get_sync_folders() {
                     sync_folder(
-                        &settings.download_folder,
-                        sync_dir.local_abs(&settings.local_media_root),
-                        sync_dir.remote_abs(&remote_root)
+                            &settings.download_folder,
+                    sync_dir.local_abs(&settings.local_media_root),
+                    sync_dir.remote_abs(&remote_root)
                     )
                 }
             },
@@ -37,27 +39,15 @@ fn sync_folder(download_folder: &PathBuf, local: PathBuf, remote: String) {
     let next_local_episode = next_local_episode(&local);
     println!("Next episode: {}", next_local_episode);
 
-    let possible_matches: Vec<String> = remote_episodes.into_iter()
-        .filter(|episode| episode.contains(&format!(" {:0>2}.", next_local_episode)))
-        .collect();
-    let perfect_match = possible_matches.iter().find(|episode| apply_filters(episode));
-
-    let match_episode = if perfect_match.is_some() {
-        perfect_match
-    } else {
-        println!("Trying closest match...");
-        possible_matches.first()
-    };
-
-    if let Some(media) = match_episode {
+    if let Some(media) = filtering::find_closest_episode(remote_episodes, next_local_episode) {
         println!("Match: {}", media);
         println!("Download folder: {:?}", download_folder);
 
         Command::new(adapt_to_os("mega-get"))
-            .arg(format!("{}/{}", remote, media))
-            .arg(&download_folder)
-            .spawn().unwrap()
-            .wait().unwrap();
+        .arg(format!("{}/{}", remote, media))
+        .arg(&download_folder)
+        .spawn().unwrap()
+        .wait().unwrap();
 
         let temp_path = download_folder.join(&media);
 
@@ -77,35 +67,35 @@ fn sync_folder(download_folder: &PathBuf, local: PathBuf, remote: String) {
 
 fn try_login(user: String, password: String) -> Result<ExitStatus, Box<dyn Error>> {
     let status = Command::new(adapt_to_os("mega-login"))
-        .arg(user)
-        .arg(password)
-        .status()?;
+    .arg(user)
+    .arg(password)
+    .status()?;
 
     Ok(status)
 }
 
 fn next_local_episode(local_folder: &PathBuf) -> u8 {
     let last_episode = std::fs::read_dir(local_folder).expect("Invalid path")
-        .filter_map(|entry| entry.ok())
-        .map(|entry| entry.path())
-        .filter(|entry| entry.is_file())
-        .filter_map(|file| file.file_stem().unwrap().to_str().unwrap().parse::<u8>().ok())
-        .max().unwrap_or(0);
+    .filter_map(|entry| entry.ok())
+    .map(|entry| entry.path())
+    .filter(|entry| entry.is_file())
+    .filter_map(|file| file.file_stem().unwrap().to_str().unwrap().parse::<u8>().ok())
+    .max().unwrap_or(0);
 
     last_episode + 1
 }
 
 fn list_remote_folder(remote_folder: &str) -> Vec<String> {
     let output = Command::new(adapt_to_os("mega-ls"))
-        .arg(remote_folder)
-        .output();
+    .arg(remote_folder)
+    .output();
 
     match output {
         Ok(output) if output.status.success() => {
             let ls = String::from_utf8_lossy(&output.stdout);
             ls.lines()
-                .map(|line| line.to_string())
-                .collect()
+            .map(|line| line.to_string())
+            .collect()
         },
         Ok(output_error) => {
             let error = String::from_utf8_lossy(&output_error.stdout);
@@ -118,24 +108,6 @@ fn list_remote_folder(remote_folder: &str) -> Vec<String> {
             vec![]
         }
     }
-}
-
-fn apply_filters(episode: &str) -> bool {
-    let filters = config::get_filters();
-
-    for filter in filters.contains {
-        if !episode.contains(&filter) {
-            return false;
-        }
-    }
-
-    for banned_term in filters.not_contains {
-        if episode.contains(&banned_term) {
-            return false;
-        }
-    }
-
-    true
 }
 
 fn adapt_to_os(command: &str) -> String {
