@@ -1,18 +1,16 @@
-use std::error::Error;
-use std::path::PathBuf;
-use std::process::{Command, ExitStatus};
-use crate::config;
-use crate::config::Config;
+use std::{path::PathBuf};
+use crate::config::{self,Config};
+use sys::copy_file;
 
 mod filtering;
+mod mega;
+mod sys;
 
 pub fn run_sync(settings: Config) {
     if let (Some(mega_pwd), Some(mega_user), Some(remote_root)) = (settings.mega_pwd, settings.mega_user, settings.remote_media_root) {
-        let exit_status = try_login(mega_user, mega_pwd);
-        println!();
-
-        match exit_status {
-            Ok(status) if is_logged_in(status) => {
+        match mega::login(&mega_user, &mega_pwd) {
+            Ok(output) => {
+                println!("{}", output);
                 for sync_dir in config::get_sync_folders() {
                     sync_folder(
                             &settings.download_folder,
@@ -22,15 +20,10 @@ pub fn run_sync(settings: Config) {
                 }
             },
             Err(e) => eprintln!("Login error: {:?}", e),
-            _ => println!("Unknown login error")
         }
     } else {
         eprintln!("MEGA credentials and remote directory root are required");
     }
-}
-
-fn is_logged_in(exit_status: ExitStatus) -> bool {
-    exit_status.success() || exit_status.code().unwrap_or(-1) == 54
 }
 
 fn sync_folder(download_folder: &PathBuf, local: PathBuf, remote: String) {
@@ -43,11 +36,8 @@ fn sync_folder(download_folder: &PathBuf, local: PathBuf, remote: String) {
         println!("Match: {}", media);
         println!("Download folder: {:?}", download_folder);
 
-        Command::new(adapt_to_os("mega-get"))
-        .arg(format!("{}/{}", remote, media))
-        .arg(&download_folder)
-        .spawn().unwrap()
-        .wait().unwrap();
+        mega::get(&format!("{}/{}", remote, media), &download_folder)
+            .unwrap();
 
         let temp_path = download_folder.join(&media);
 
@@ -57,21 +47,14 @@ fn sync_folder(download_folder: &PathBuf, local: PathBuf, remote: String) {
         println!("Temp path: {:?}", temp_path);
         println!("Destination: {:?}", new_name);
 
-        std::fs::copy(&temp_path, new_name).unwrap();
-        std::fs::remove_file(&temp_path).unwrap();
+        if copy_file(&temp_path, &new_name).is_ok() {
+            std::fs::remove_file(&temp_path).unwrap();
+        }
+
     } else {
         println!("Up to date for {:?}", local);
     }
     println!();
-}
-
-fn try_login(user: String, password: String) -> Result<ExitStatus, Box<dyn Error>> {
-    let status = Command::new(adapt_to_os("mega-login"))
-    .arg(user)
-    .arg(password)
-    .status()?;
-
-    Ok(status)
 }
 
 fn next_local_episode(local_folder: &PathBuf) -> u8 {
@@ -86,34 +69,11 @@ fn next_local_episode(local_folder: &PathBuf) -> u8 {
 }
 
 fn list_remote_folder(remote_folder: &str) -> Vec<String> {
-    let output = Command::new(adapt_to_os("mega-ls"))
-    .arg(remote_folder)
-    .output();
-
-    match output {
-        Ok(output) if output.status.success() => {
-            let ls = String::from_utf8_lossy(&output.stdout);
-            ls.lines()
-            .map(|line| line.to_string())
-            .collect()
-        },
-        Ok(output_error) => {
-            let error = String::from_utf8_lossy(&output_error.stdout);
-            eprintln!("Error on 'mega-ls' for path '{}'", remote_folder);
-            println!("{}", error);
-            vec![]
-        },
+    match mega::ls(remote_folder) {
+        Ok(list) => list,
         Err(e) => {
-            eprintln!("Error on 'mega-ls' for path '{}', Error: {:#?}", remote_folder, e);
+            eprintln!("{:?}", e);
             vec![]
         }
-    }
-}
-
-fn adapt_to_os(command: &str) -> String {
-    if cfg!(windows) {
-        format!("{}.bat", command)
-    } else {
-        command.to_string()
     }
 }

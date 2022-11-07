@@ -1,9 +1,7 @@
-use std::env;
-use std::error::Error;
-use std::path::PathBuf;
-use crate::fs_store;
+use std::{env,error::Error,path::PathBuf};
+use relative_path::RelativePathBuf;
 use serde::{Serialize, Deserialize};
-use crate::fs_store::FILE;
+use crate::fs_store::{self,FILE};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Config {
@@ -50,7 +48,7 @@ impl Config {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct SyncDir {
     pub remote: String,
-    pub local: PathBuf
+    pub local: RelativePathBuf
 }
 
 impl SyncDir {
@@ -58,7 +56,7 @@ impl SyncDir {
         format!("{}{}", remote_root, &self.remote)
     }
     pub fn local_abs(&self, local_root: &PathBuf) -> PathBuf {
-        local_root.join(&self.local)
+        self.local.to_path(local_root)
     }
 }
 
