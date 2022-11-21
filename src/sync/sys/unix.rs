@@ -1,12 +1,34 @@
-use std::fs;
+use std::{env, fs};
 use std::path::PathBuf;
 use std::os::unix::fs::PermissionsExt;
+use file_owner::PathExt;
 
-pub fn copy_file(from_file: &PathBuf, to_file: &PathBuf) -> Result<()> {
-    let operation = fs::copy(from_file, to_file).map(|_| ());
-    if operation.is_ok() {
-        let mut permissions = to_file.metadata()?.permissions();
-        println!("Parent permissions: {:?}", to_file.parent().unwrap().metadata().unwrap().permissions().mode());
-        permissions.set_mode(777);
+pub fn copy_file(from_file: &PathBuf, to_file: &PathBuf) -> std::io::Result<()> {
+    if fs::copy(from_file, to_file).is_ok() {
+        try_own_file(to_file);
+
+        let permissions = fs::Permissions::from_mode(0o777);
+        if let Err(e) = fs::set_permissions(to_file, permissions) {
+            eprintln!("Error changing permissions: {:?}", e);
+        }
+    }
+    Ok(())
+}
+
+fn try_own_file(file: &PathBuf) {
+    let owner = env::var("UNIX_USER").ok()
+        .and_then(|uid| uid.parse::<u32>().ok());
+    if let Some(owner) = owner {
+        if let Err(e) = file.set_owner(owner) {
+            eprintln!("Error trying to own '{:?}': {:?}", file, e)
+        }
+    }
+
+    let group = env::var("UNIX_GROUP").ok()
+        .and_then(|gid| gid.parse::<u32>().ok());
+    if let Some(group) = group {
+        if let Err(e) = file.set_group(group) {
+            eprintln!("Error trying to group own '{:?}': {:?}", file, e)
+        }
     }
 }

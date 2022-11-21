@@ -19,19 +19,18 @@ pub fn login(user: &str, password: &str) -> Result<String, Box<dyn Error>> {
     Ok(output)
 }
 
-pub fn get(remote_media: &str, download_dir: &PathBuf) -> Result<(), Box<dyn Error>> {
+pub fn get(remote_media: &str, download_dir: &PathBuf) -> Result<String, Box<dyn Error>> {
     let command: String = Mega::GET.into();
-    let status = Command::new(command)
+    let output = Command::new(command)
         .arg(remote_media)
         .arg(download_dir)
-        .spawn()?
-        .wait()?;
+        .output()?;
 
-    if !status.success() {
-        Err(format!("ExitStatus: {:#?}", status))?;
+    if !output.status.success() {
+        Err(format!("ExitStatus: {:#?}", output.status))?;
     }
 
-    Ok(())
+    Ok(String::from_utf8(output.stdout)?)
 }
 
 pub fn ls(remote_dir: &str) -> Result<Vec<String>, Box<dyn Error>> {

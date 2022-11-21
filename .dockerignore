@@ -6,5 +6,5 @@ www/dist
 www/node_modules
 .env
 docker-compose.yml
-
+test-media
 *.md

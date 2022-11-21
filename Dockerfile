@@ -2,8 +2,8 @@ FROM rust:1.64.0-alpine3.16 as builder
 WORKDIR /build
 COPY ./Cargo.toml ./Cargo.toml
 RUN cargo fetch
-COPY . .
 RUN apk add --no-cache build-base nodejs npm
+COPY . .
 RUN cargo build --release
 
 

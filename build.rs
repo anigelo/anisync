@@ -3,11 +3,11 @@ use std::process::Command;
 
 fn main() {
     println!("cargo:rerun-if-changed=client");
-    build_client();
+    build();
 }
 
 #[cfg(not(debug_assertions))]
-fn build_client() {
+fn build() {
     let status = Command::new("npm")
         .arg("install")
         .current_dir("www")
@@ -25,6 +25,17 @@ fn build_client() {
 }
 
 #[cfg(debug_assertions)]
-fn build_client() {
-    // skip in debug builds
+fn build() {
+    let path = std::path::PathBuf::from("test-media");
+    if std::fs::create_dir(&path).is_ok() {
+        create_test_env(path);
+    }
+}
+
+#[cfg(debug_assertions)]
+fn create_test_env(path: std::path::PathBuf) {
+    let media = path.join("test");
+    if std::fs::create_dir(&media).is_ok() {
+        std::fs::write(media.join("01.mkv"), "").ok();
+    }
 }
