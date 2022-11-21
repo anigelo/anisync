@@ -4,15 +4,11 @@ use std::os::unix::fs::PermissionsExt;
 use file_owner::PathExt;
 
 pub fn copy_file(from_file: &PathBuf, to_file: &PathBuf) -> std::io::Result<()> {
-    if fs::copy(from_file, to_file).is_ok() {
-        try_own_file(to_file);
+    fs::copy(from_file, to_file)?;
+    try_own_file(to_file);
 
-        let permissions = fs::Permissions::from_mode(0o777);
-        if let Err(e) = fs::set_permissions(to_file, permissions) {
-            eprintln!("Error changing permissions: {:?}", e);
-        }
-    }
-    Ok(())
+    let permissions = fs::Permissions::from_mode(0o777);
+    fs::set_permissions(to_file, permissions)
 }
 
 fn try_own_file(file: &PathBuf) {

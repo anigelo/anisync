@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::path::PathBuf;
+use crate::sync::ResultLogExt;
 
 pub fn next_local_episode(local_dir: &PathBuf) -> Result<u8, Box<dyn Error>> {
     let last_episode = std::fs::read_dir(local_dir)
@@ -28,7 +29,7 @@ pub fn move_to_media_dir(temp_path: PathBuf, new_path: PathBuf, ep_number: u8) -
     let new_name = new_path.with_file_name(
         format!("{:0>2}.{}", ep_number, extension)
     );
-    if super::sys::copy_file(&temp_path, &new_name).is_ok() {
+    if super::sys::copy_file(&temp_path, &new_name).log_error().is_some() {
         std::fs::remove_file(&temp_path)?;
     }
     Ok(new_name)
